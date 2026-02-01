@@ -1,0 +1,15 @@
+{
+  "name": "webrtc-learning",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "//": "https://github.com/remarkjs/remark/tree/main/packages/remark-stringify",
+  "remarkConfig": {
+    "settings": {
+      "bullet": "-"
+    }
+  }
+}

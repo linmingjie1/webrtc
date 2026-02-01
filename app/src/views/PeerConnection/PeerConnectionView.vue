@@ -212,7 +212,7 @@ onMounted(() => {
   }
 
   initSignalingChannel()
-  addLog('info', '页面加载完成，请选择角色')
+  addLog('info', 'mounted->页面加载完成，请选择角色')
 })
 
 onUnmounted(() => {

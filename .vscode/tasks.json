@@ -1,0 +1,70 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      // 任务类型：shell 命令
+      "type": "shell",
+
+      // 执行的命令：使用 pnpm 启动开发服务器
+      "command": "pnpm run dev",
+
+      // 命令执行选项
+      "options": {
+        // 工作目录：app 文件夹
+        "cwd": "${workspaceFolder}/app"
+      },
+
+      // 任务标签：在调试配置中通过此名称引用
+      "label": "npm: dev - app",
+
+      // 后台任务：允许任务在后台持续运行（适用于开发服务器）
+      "isBackground": true,
+
+      // 问题匹配器：用于检测任务何时完成
+      "problemMatcher": {
+        "owner": "custom",
+
+        // 错误匹配模式（这里是通用模式）
+        "pattern": {
+          "regexp": "^([^\\s].*)$",
+          "file": 1,
+          "location": 2,
+          "message": 3
+        },
+
+        // 后台任务的生命周期检测
+        "background": {
+          // 启动时立即激活
+          "activeOnStart": true,
+
+          // 开始模式：匹配 "VITE ready in" 表示 Vite 正在启动
+          "beginsPattern": "VITE.*ready in",
+
+          // 结束模式：匹配 "Local:" 或 "Network:" 的 URL 输出，表示服务器已就绪
+          "endsPattern": "(Local|Network):.*https?://.*"
+        }
+      },
+
+      // 终端面板显示设置
+      "presentation": {
+        // 在终端中回显命令
+        "echo": true,
+
+        // 总是显示终端面板
+        "reveal": "always",
+
+        // 不自动聚焦到终端（让你继续在编辑器中工作）
+        "focus": false,
+
+        // 使用专用的终端面板（不与其他任务共享）
+        "panel": "dedicated",
+
+        // 显示重用消息
+        "showReuseMessage": true,
+
+        // 不清空之前的终端输出
+        "clear": false
+      }
+    }
+  ]
+}

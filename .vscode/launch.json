@@ -1,0 +1,41 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "chrome",
+      "request": "launch",
+      "name": "🚀 Launch Chrome (Vite App)",
+      "url": "https://localhost:5173/peer-connection",
+      "webRoot": "${workspaceFolder}/app/src",
+      "sourceMaps": true,
+      // /Users/Richard/Library/Application\ Support/Cursor/User/workspaceStorage/
+      "userDataDir": true,
+      "timeout": 30000,
+      "trace": true,
+      "runtimeArgs": [
+        "--disable-web-security",
+        "--ignore-certificate-errors"
+        // "--auto-open-devtools-for-tabs"
+      ]
+    },
+    {
+      "name": "🔗 Attach to Chrome",
+      "type": "chrome",
+      "request": "attach",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}/app/src",
+      "sourceMaps": true
+    }
+  ],
+  "compounds": [
+    {
+      "name": "🎯 Vite: Start & Debug",
+      "configurations": ["🚀 Launch Chrome (Vite App)"],
+      "preLaunchTask": "npm: dev - app",
+      "stopAll": true
+    }
+  ]
+}

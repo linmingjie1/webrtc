@@ -1,5 +1,42 @@
 # WebRTC 入门指南
 
+## 🚀 快速开始
+
+### 多人 Mesh 通话（WebSocket 信令）
+
+本项目新增了基于 WebSocket 信令服务器的多人音视频通话功能：
+
+1. **启动信令服务器**
+   ```bash
+   cd server
+   npm install
+   npm start
+   ```
+   服务器将在 `ws://localhost:8787` 启动
+
+2. **启动前端应用**
+   ```bash
+   cd app
+   npm run dev
+   ```
+
+3. **访问多人通话页面**
+   
+   在浏览器中打开：`http://localhost:5173/pc-server`
+
+4. **测试多人通话**
+   - 打开多个浏览器标签页
+   - 输入相同的房间 ID（如 `demo`）
+   - 依次点击"连接并加入房间"和"开启本地媒体"
+   - 观察 P2P 连接建立和视频展示
+
+📖 **详细文档**：
+- [功能说明和使用指南](./app/src/views/PeerConnectionServer/README.md)
+- [信令服务器文档](./server/README.md)
+- [设计文档](./docs/webrtc-signaling-mesh.md)
+
+---
+
 [TOC]
 
 ## 什么是 WebRTC
@@ -636,3 +673,143 @@ WebRTC 会根据网络抖动程度动态调整缓冲区大小，通常：
 
 - 音频：20-100ms
 - 视频：50-200ms
+
+## 项目功能
+
+本项目包含多个 WebRTC 学习示例，从基础到进阶逐步展开。
+
+### 1. 媒体流获取（/media）
+- 获取摄像头和麦克风
+- 本地媒体流预览
+- 媒体约束配置
+
+### 2. 本地 P2P 连接（/peer-connection）
+- 基于 BroadcastChannel 的标签页间信令
+- RTCPeerConnection 基础用法
+- SDP 协商流程
+- ICE 候选处理
+
+### 3. 多人 Mesh 通话（/pc-server）⭐ 新增
+- 基于 WebSocket 的信令服务器
+- 多人实时音视频通话
+- Mesh（网状 P2P）架构
+- 房间管理功能
+- 详细操作日志
+
+**目录结构：**
+```
+webrtc-learning/
+├── server/                    # WebSocket 信令服务器
+│   ├── src/
+│   │   └── index.js          # 服务器主逻辑
+│   ├── package.json
+│   └── README.md
+└── app/                       # 前端应用
+    ├── src/
+    │   ├── views/
+    │   │   ├── MediaView.vue
+    │   │   ├── PeerConnection/
+    │   │   └── PeerConnectionServer/  # 多人通话页面
+    │   │       ├── PeerConnectionServerView.vue
+    │   │       ├── composables/
+    │   │       │   ├── useWebSocketSignaling.js
+    │   │       │   └── useMeshConnection.js
+    │   │       └── README.md
+    │   └── router/
+    │       └── index.js
+    └── package.json
+```
+
+## 快速开始
+
+### 1. 启动信令服务器（多人通话）
+
+```bash
+cd server
+npm install
+npm start
+```
+
+服务器将在 `ws://localhost:8787` 启动。
+
+### 2. 启动前端应用
+
+```bash
+cd app
+npm install
+npm run dev
+```
+
+访问 `http://localhost:5173`，选择对应的功能页面。
+
+### 3. 测试多人通话
+
+1. 打开多个浏览器 Tab
+2. 访问 `/pc-server` 页面
+3. 使用相同的房间 ID
+4. 依次连接并开启媒体
+5. 观察视频网格和连接日志
+
+## 学习路线
+
+### 第一阶段：基础概念
+- 阅读本 README 的理论部分
+- 运行 `/media` 页面，了解媒体流获取
+- 运行 `/peer-connection` 页面，理解 P2P 连接
+
+### 第二阶段：信令与多人
+- 阅读 `docs/webrtc-signaling-mesh.md`
+- 启动信令服务器，阅读 `server/README.md`
+- 运行 `/pc-server` 页面，测试多人通话
+- 阅读 `app/src/views/PeerConnectionServer/README.md`
+
+### 第三阶段：深入原理
+- 查看 `chrome://webrtc-internals/` 分析连接详情
+- 修改 STUN/TURN 配置，测试不同网络环境
+- 研究 SDP 内容，理解媒体协商
+- 尝试实现自己的功能扩展
+
+## 核心技术点
+
+### 1. 信令设计
+- **BroadcastChannel**：本地标签页间通信（无需服务器）
+- **WebSocket**：客户端-服务器实时通信
+- **信令协议**：自定义 JSON 协议
+- **房间管理**：多房间隔离
+
+### 2. 连接管理
+- **Mesh 架构**：每个客户端连接所有其他客户端
+- **协商策略**：老用户向新用户发 Offer
+- **ICE 缓存**：处理信令时序问题
+- **连接清理**：断线自动清理资源
+
+### 3. 媒体处理
+- **getUserMedia**：获取本地媒体
+- **addTrack/ontrack**：媒体轨道管理
+- **多路流管理**：按 peerId 维护远程流
+- **视频网格布局**：响应式 CSS Grid
+
+## 常见问题
+
+### 连接失败
+- 检查信令服务器是否启动
+- 查看浏览器控制台和页面日志
+- 确认防火墙/代理设置
+
+### ICE 候选失败
+- STUN 服务器可能不可达
+- 需要配置 TURN 服务器
+- 检查网络 NAT 类型
+
+### 媒体不显示
+- 确认授予摄像头/麦克风权限
+- 检查 autoplay 策略
+- 查看 video 元素的 srcObject
+
+## 扩展学习
+
+- [WebRTC 官方文档](https://webrtc.org/)
+- [MDN WebRTC API](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API)
+- [chrome://webrtc-internals/](chrome://webrtc-internals/) - 调试工具
+- SFU 架构学习（LiveKit、mediasoup）
+- TURN 服务器搭建（coturn）

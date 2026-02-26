@@ -22,6 +22,7 @@ const router = createRouter({
       name: 'pc-server',
       component: () => import('../views/PeerConnectionServer/PeerConnectionServerView.vue'),
     },
+    { path: '/api', name: '/api', component: () => import('../views/Api/Api.vue') }
   ],
 })
 

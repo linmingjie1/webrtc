@@ -72,7 +72,7 @@ function getRoomPeers(roomId, excludeClientId) {
     if (ws.clientId !== excludeClientId) {
       peers.push({
         clientId: ws.clientId,
-        name: ws.name || undefined
+        name: ws.name || undefined // 成员名称
       })
     }
   })
@@ -106,7 +106,7 @@ function handleJoin(ws, data) {
   // 获取当前房间内的其他成员
   const peers = getRoomPeers(roomId, clientId)
 
-  // 回复 joined 消息
+  // 回复 joined 消息，并返回成员列表
   ws.send(
     JSON.stringify({
       action: 'joined',
@@ -253,6 +253,7 @@ wss.on('connection', (ws) => {
 
   // 处理消息
   ws.on('message', (message) => {
+    // 解析json，并校验格式，返回校验结果和解析对象
     const validation = validateMessage(message.toString(), message.length)
 
     if (!validation.valid) {
@@ -279,7 +280,7 @@ wss.on('connection', (ws) => {
       case 'signal':
         handleSignal(ws, data)
         break
-      default:
+      default: // 未知动作，返回错误消息，提示未知动作
         ws.send(
           JSON.stringify({
             action: 'error',

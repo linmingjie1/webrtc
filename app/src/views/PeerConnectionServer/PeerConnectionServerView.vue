@@ -211,7 +211,7 @@ const signaling = useWebSocketSignaling(addLog, async (message) => {
   const { action, peers: initialPeers, peer, clientId: leftClientId, from, type, data } = message
 
   switch (action) {
-    case 'joined':
+    case 'joined': //加入房间成功
       // 加入房间成功，处理已有成员
       addLog('success', `成功加入房间，当前有 ${initialPeers.length} 人`)
       initialPeers.forEach(p => {
@@ -290,7 +290,7 @@ const handleConnect = async () => {
 
   try {
     isConnecting.value = true
-    await connect()
+    await connect() // 连接Websocket服务器
     joinRoom(roomId.value, userName.value)
   } catch (error) {
     addLog('error', `连接失败: ${error.message}`)

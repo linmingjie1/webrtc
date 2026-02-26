@@ -19,7 +19,7 @@ export function useWebSocketSignaling(addLog, messageHandler) {
     return new Promise((resolve, reject) => {
       try {
         addLog('info', `连接信令服务器: ${serverUrl.value}`)
-        
+
         const socket = new WebSocket(serverUrl.value)
 
         socket.onopen = () => {
@@ -84,7 +84,7 @@ export function useWebSocketSignaling(addLog, messageHandler) {
   }
 
   /**
-   * 加入房间
+   * 加入房间 action=join
    */
   const joinRoom = (roomId, name) => {
     if (!ws.value || !isConnected.value) {
@@ -95,7 +95,7 @@ export function useWebSocketSignaling(addLog, messageHandler) {
     const message = {
       action: 'join',
       roomId,
-      name: name || undefined
+      name: name || undefined // 用户名
     }
 
     ws.value.send(JSON.stringify(message))
@@ -104,7 +104,7 @@ export function useWebSocketSignaling(addLog, messageHandler) {
   }
 
   /**
-   * 离开房间
+   * 离开房间 action=leave
    */
   const leaveRoom = () => {
     if (!ws.value || !currentRoomId.value) {

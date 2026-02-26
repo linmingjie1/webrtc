@@ -16,16 +16,16 @@ const configuration = {
 export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
   // 房间内的所有 peers（不包括自己）
   const peers = ref(new Map())
-  
+
   // 每个 peer 的 RTCPeerConnection
   const pcs = ref(new Map())
-  
+
   // 每个 peer 的远程媒体流
   const remoteStreams = ref(new Map())
-  
+
   // 缓存的 ICE 候选（按 peerId）
   const pendingIce = ref(new Map())
-  
+
   // 本地媒体流
   const localStream = ref(null)
 
@@ -47,19 +47,19 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
       const stream = await getLocalStreamFn()
       localStream.value = stream
       addLog('success', '本地媒体流已准备就绪')
-      
+
       // 为所有已存在的 PeerConnection 添加本地轨道并重新协商
       for (const [peerId, pc] of pcs.value.entries()) {
         try {
           const senders = pc.getSenders()
           let needsRenegotiation = false
-          
+
           // 检查是否需要添加轨道
           stream.getTracks().forEach((track) => {
-            const existingSender = senders.find(sender => 
+            const existingSender = senders.find(sender =>
               sender.track && sender.track.kind === track.kind
             )
-            
+
             if (!existingSender) {
               // 添加新轨道
               pc.addTrack(track, stream)
@@ -67,7 +67,7 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
               needsRenegotiation = true
             }
           })
-          
+
           // 如果添加了新轨道，需要重新协商
           if (needsRenegotiation) {
             addLog('info', `向 ${peerId} 发送重新协商的 Offer`)
@@ -79,14 +79,14 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
           addLog('error', `为 ${peerId} 添加轨道失败: ${error.message}`)
         }
       }
-      
+
       // 如果已有 peers 但还没有建立连接，发起 offer
       peers.value.forEach((peer, peerId) => {
         if (!pcs.value.has(peerId)) {
           createPeerConnectionAndOffer(peerId)
         }
       })
-      
+
       return stream
     } catch (error) {
       addLog('error', `获取本地媒体失败: ${error.message}`)
@@ -116,7 +116,7 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
     // 监听连接状态
     pc.oniceconnectionstatechange = () => {
       addLog('info', `与 ${peerId} 的 ICE 状态: ${pc.iceConnectionState}`)
-      
+
       if (pc.iceConnectionState === 'connected') {
         ElMessage.success(`与 ${peerId} 连接成功`)
       } else if (pc.iceConnectionState === 'failed') {
@@ -130,14 +130,14 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
     // 监听远程媒体轨道
     pc.ontrack = (event) => {
       addLog('success', `收到来自 ${peerId} 的媒体轨道: ${event.track.kind}`)
-      
+
       if (!remoteStreams.value.has(peerId)) {
         remoteStreams.value.set(peerId, new MediaStream())
       }
-      
+
       const stream = remoteStreams.value.get(peerId)
       stream.addTrack(event.track)
-      
+
       // 触发响应式更新
       remoteStreams.value = new Map(remoteStreams.value)
     }
@@ -160,11 +160,11 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
   const createPeerConnectionAndOffer = async (peerId) => {
     try {
       const pc = createPeerConnection(peerId)
-      
+
       addLog('info', `向 ${peerId} 发送 Offer`)
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
-      
+
       sendSignalToPeer(peerId, 'offer', offer)
       addLog('send', `已向 ${peerId} 发送 Offer`)
     } catch (error) {
@@ -177,10 +177,10 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
    */
   const handlePeerJoined = (peer) => {
     const { clientId: peerId, name } = peer
-    
+
     addLog('info', `新用户加入: ${name || peerId}`)
     peers.value.set(peerId, { name, joinedAt: Date.now() })
-    
+
     // 如果本地媒体已就绪，立即发起 offer
     if (isMediaReady.value) {
       createPeerConnectionAndOffer(peerId)
@@ -194,14 +194,14 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
    */
   const handlePeerLeft = (peerId) => {
     addLog('info', `用户离开: ${peerId}`)
-    
+
     // 关闭 PeerConnection
     const pc = pcs.value.get(peerId)
     if (pc) {
       pc.close()
       pcs.value.delete(peerId)
     }
-    
+
     // 清理远程流
     const stream = remoteStreams.value.get(peerId)
     if (stream) {
@@ -209,13 +209,13 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
       remoteStreams.value.delete(peerId)
       remoteStreams.value = new Map(remoteStreams.value)
     }
-    
+
     // 清理缓存的 ICE
     pendingIce.value.delete(peerId)
-    
+
     // 从 peers 列表移除
     peers.value.delete(peerId)
-    
+
     ElMessage.info(`${peerId} 已离开`)
   }
 
@@ -225,18 +225,18 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
   const handleOffer = async (from, offer) => {
     try {
       addLog('info', `收到来自 ${from} 的 Offer`)
-      
+
       // 即使本地媒体未就绪，也要建立连接以接收对方的媒体流
       const pc = createPeerConnection(from)
       await pc.setRemoteDescription(new RTCSessionDescription(offer))
-      
+
       // 处理缓存的 ICE 候选
       await flushPendingIce(from)
-      
+
       // 创建并发送 Answer
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
-      
+
       sendSignalToPeer(from, 'answer', answer)
       addLog('send', `已向 ${from} 发送 Answer${!isMediaReady.value ? '（本地媒体未就绪，仅接收模式）' : ''}`)
     } catch (error) {
@@ -250,18 +250,18 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
   const handleAnswer = async (from, answer) => {
     try {
       addLog('info', `收到来自 ${from} 的 Answer`)
-      
+
       const pc = pcs.value.get(from)
       if (!pc) {
         addLog('error', `未找到 ${from} 的 PeerConnection`)
         return
       }
-      
+
       await pc.setRemoteDescription(new RTCSessionDescription(answer))
-      
+
       // 处理缓存的 ICE 候选
       await flushPendingIce(from)
-      
+
       addLog('success', `已处理来自 ${from} 的 Answer`)
     } catch (error) {
       addLog('error', `处理来自 ${from} 的 Answer 失败: ${error.message}`)
@@ -273,7 +273,7 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
    */
   const handleIceCandidate = async (from, candidate) => {
     const pc = pcs.value.get(from)
-    
+
     if (!pc || !pc.remoteDescription) {
       // PeerConnection 不存在或远程描述未设置，缓存 ICE
       if (!pendingIce.value.has(from)) {
@@ -283,7 +283,7 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
       addLog('info', `缓存来自 ${from} 的 ICE 候选`)
       return
     }
-    
+
     try {
       await pc.addIceCandidate(new RTCIceCandidate(candidate))
       addLog('info', `已添加来自 ${from} 的 ICE 候选`)
@@ -297,14 +297,14 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
    */
   const handleHangup = (from) => {
     addLog('info', `${from} 挂断了连接`)
-    
+
     // 关闭 PeerConnection
     const pc = pcs.value.get(from)
     if (pc) {
       pc.close()
       pcs.value.delete(from)
     }
-    
+
     // 清理远程流
     const stream = remoteStreams.value.get(from)
     if (stream) {
@@ -312,13 +312,13 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
       remoteStreams.value.delete(from)
       remoteStreams.value = new Map(remoteStreams.value)
     }
-    
+
     // 清理缓存的 ICE
     pendingIce.value.delete(from)
-    
+
     // 注意：不从 peers 列表移除，因为对方可能只是暂时挂断，还在房间里
     // 只有收到 peer-left 消息时才真正移除
-    
+
     ElMessage.info(`${from} 挂断了连接`)
   }
 
@@ -328,12 +328,12 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
   const flushPendingIce = async (peerId) => {
     const candidates = pendingIce.value.get(peerId)
     if (!candidates || candidates.length === 0) return
-    
+
     const pc = pcs.value.get(peerId)
     if (!pc) return
-    
+
     addLog('info', `处理来自 ${peerId} 的 ${candidates.length} 个缓存 ICE 候选`)
-    
+
     for (const candidate of candidates) {
       try {
         await pc.addIceCandidate(new RTCIceCandidate(candidate))
@@ -341,7 +341,7 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
         addLog('error', `添加缓存 ICE 失败: ${error.message}`)
       }
     }
-    
+
     pendingIce.value.delete(peerId)
   }
 
@@ -350,7 +350,7 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
    */
   const hangupAll = () => {
     addLog('info', '挂断所有连接')
-    
+
     // 向每个 peer 发送 hangup 信令
     pcs.value.forEach((pc, peerId) => {
       sendSignalToPeer(peerId, 'hangup', {})
@@ -358,22 +358,22 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
       addLog('info', `已关闭与 ${peerId} 的连接`)
     })
     pcs.value.clear()
-    
+
     // 停止所有远程流
     remoteStreams.value.forEach((stream, peerId) => {
       stream.getTracks().forEach(track => track.stop())
     })
     remoteStreams.value.clear()
-    
+
     // 停止本地流
     if (localStream.value) {
       localStream.value.getTracks().forEach(track => track.stop())
       localStream.value = null
     }
-    
+
     // 清空缓存的 ICE 候选
     pendingIce.value.clear()
-    
+
     // 注意：不清空 peers 列表，因为房间内的成员还在
     // 这样重新开启媒体时，可以继续与房间内的成员建立连接
   }

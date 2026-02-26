@@ -8,6 +8,7 @@ const menuItems = [
   { path: '/media', title: '媒体设备测试' },
   { path: '/peer-connection', title: '点对点连接' },
   { path: '/pc-server', title: '多人 Mesh 通话' },
+  { path: '/api', title: 'API 测试' },
 ]
 
 const handleMenuClick = (path) => {

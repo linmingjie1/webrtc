@@ -10,7 +10,7 @@ export function useWebSocketSignaling(addLog, messageHandler) {
   const clientId = ref(null)
   const isConnected = ref(false)
   const currentRoomId = ref(null)
-  const serverUrl = ref('ws://localhost:8787')
+  const serverUrl = ref(localStorage.getItem('serverUrl') || 'ws://localhost:8787')
 
   /**
    * 连接到信令服务器

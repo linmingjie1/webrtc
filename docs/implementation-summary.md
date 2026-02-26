@@ -9,6 +9,7 @@
 ### 1. 信令服务器（server/）
 
 **文件结构：**
+
 ```
 server/
 ├── package.json          # 依赖配置
@@ -19,6 +20,7 @@ server/
 ```
 
 **核心功能：**
+
 - ✅ 原生 WebSocket 服务器（ws 库）
 - ✅ 房间管理（自动创建/清理）
 - ✅ 客户端 ID 分配（随机生成）
@@ -30,6 +32,7 @@ server/
 - ✅ 详细日志输出
 
 **技术实现：**
+
 - Node.js ESM 模块
 - WebSocket 端口：8787（可配置）
 - 数据结构：
@@ -39,6 +42,7 @@ server/
 ### 2. 前端页面（app/src/views/PeerConnectionServer/）
 
 **文件结构：**
+
 ```
 PeerConnectionServer/
 ├── PeerConnectionServerView.vue    # 主页面组件
@@ -49,6 +53,7 @@ PeerConnectionServer/
 ```
 
 **页面功能：**
+
 - ✅ 服务器连接配置
 - ✅ 房间加入/离开
 - ✅ 本地媒体开启/关闭
@@ -63,6 +68,7 @@ PeerConnectionServer/
 **职责：** WebSocket 连接和信令消息处理
 
 **核心方法：**
+
 - `connect()` - 连接到信令服务器
 - `disconnect()` - 断开连接
 - `joinRoom(roomId, name)` - 加入房间
@@ -70,6 +76,7 @@ PeerConnectionServer/
 - `sendSignal(type, data)` - 发送信令消息
 
 **状态管理：**
+
 - `ws` - WebSocket 连接实例
 - `clientId` - 服务器分配的客户端 ID
 - `isConnected` - 连接状态
@@ -81,6 +88,7 @@ PeerConnectionServer/
 **职责：** 多人 Mesh 连接管理
 
 **核心方法：**
+
 - `setLocalStream()` - 设置本地媒体流
 - `handlePeerJoined(peer)` - 处理新用户加入
 - `handlePeerLeft(peerId)` - 处理用户离开
@@ -91,6 +99,7 @@ PeerConnectionServer/
 - `hangupAll()` - 挂断所有连接
 
 **数据结构：**
+
 - `peers: Map<peerId, {name, joinedAt}>` - 房间成员
 - `pcs: Map<peerId, RTCPeerConnection>` - P2P 连接
 - `remoteStreams: Map<peerId, MediaStream>` - 远端媒体流
@@ -102,10 +111,12 @@ PeerConnectionServer/
 **采用"老用户向新用户发 Offer"策略：**
 
 1. **新用户加入时：**
+
    - 服务器广播 `peer-joined` 消息
    - 老用户收到后主动向新用户发送 Offer
 
 2. **新用户响应：**
+
    - 收到来自各个老用户的 Offer
    - 逐一回复 Answer
 
@@ -122,15 +133,15 @@ PeerConnectionServer/
 // 收到 ICE 时
 if (!pc || !pc.remoteDescription) {
   // 缓存到 pendingIce
-  pendingIce[peerId].push(candidate)
+  pendingIce[peerId].push(candidate);
 } else {
   // 直接添加
-  await pc.addIceCandidate(candidate)
+  await pc.addIceCandidate(candidate);
 }
 
 // 设置远程描述后
-await pc.setRemoteDescription(offer/answer)
-await flushPendingIce(peerId) // 清空缓存
+await pc.setRemoteDescription(offer / answer);
+await flushPendingIce(peerId); // 清空缓存
 ```
 
 ## 信令协议
@@ -145,11 +156,11 @@ await flushPendingIce(peerId) // 清空缓存
 { action: 'leave', roomId: string }
 
 // 发送信令
-{ 
-  action: 'signal', 
-  roomId: string, 
+{
+  action: 'signal',
+  roomId: string,
   type: 'offer'|'answer'|'ice-candidate'|'hangup',
-  data: any 
+  data: any
 }
 ```
 
@@ -157,16 +168,16 @@ await flushPendingIce(peerId) // 清空缓存
 
 ```javascript
 // 加入成功
-{ 
-  action: 'joined', 
-  roomId: string, 
+{
+  action: 'joined',
+  roomId: string,
   clientId: string,
   peers: Array<{clientId, name?}>
 }
 
 // 新成员加入
-{ 
-  action: 'peer-joined', 
+{
+  action: 'peer-joined',
   roomId: string,
   peer: {clientId, name?}
 }
@@ -175,9 +186,9 @@ await flushPendingIce(peerId) // 清空缓存
 { action: 'peer-left', roomId: string, clientId: string }
 
 // 转发信令（自动补齐 from）
-{ 
-  action: 'signal', 
-  roomId: string, 
+{
+  action: 'signal',
+  roomId: string,
   from: string,
   type: string,
   data: any
@@ -189,6 +200,7 @@ await flushPendingIce(peerId) // 清空缓存
 ### 1. 广播转发机制
 
 服务器收到 `signal` 消息后：
+
 - 校验 `roomId/type` 与消息大小
 - 广播给同房间除发送者外所有连接
 - **自动补齐 `from` 字段**（关键）
@@ -196,6 +208,7 @@ await flushPendingIce(peerId) // 清空缓存
 ### 2. 按 peerId 归类处理
 
 每个 peer 维护独立的：
+
 - RTCPeerConnection
 - MediaStream
 - ICE 候选缓存
@@ -210,7 +223,7 @@ await flushPendingIce(peerId) // 清空缓存
 
 ```javascript
 // 触发 Vue 响应式更新
-remoteStreams.value = new Map(remoteStreams.value)
+remoteStreams.value = new Map(remoteStreams.value);
 ```
 
 ## 项目文档
@@ -218,12 +231,14 @@ remoteStreams.value = new Map(remoteStreams.value)
 创建了完整的文档体系：
 
 1. **server/README.md** - 信令服务器文档
+
    - 安装启动说明
    - 协议规范
    - 目录结构
    - 后续扩展
 
 2. **app/src/views/PeerConnectionServer/README.md** - 功能文档
+
    - 使用步骤
    - 架构设计
    - 核心 Composables
@@ -233,6 +248,7 @@ remoteStreams.value = new Map(remoteStreams.value)
    - 优化方向
 
 3. **docs/testing-guide.md** - 测试说明
+
    - 测试前准备
    - 详细测试步骤
    - 预期结果
@@ -246,10 +262,12 @@ remoteStreams.value = new Map(remoteStreams.value)
 ## 技术栈
 
 **服务器端：**
+
 - Node.js (ESM)
 - ws (WebSocket 库)
 
 **前端：**
+
 - Vue 3 (Composition API)
 - Element Plus (UI 组件)
 - WebRTC API
@@ -281,18 +299,21 @@ remoteStreams.value = new Map(remoteStreams.value)
 ## 后续扩展方向
 
 **短期：**
+
 - [ ] 音频/视频开关控制
 - [ ] 连接质量指标显示
 - [ ] 屏幕共享功能
 - [ ] 房间密码保护
 
 **中期：**
+
 - [ ] Perfect Negotiation 实现
 - [ ] 定向信令转发（to 字段）
 - [ ] 断线重连机制
 - [ ] 响应式 UI 优化
 
 **长期：**
+
 - [ ] TURN 服务器部署
 - [ ] 迁移到 SFU 架构
 - [ ] 录制功能
@@ -324,6 +345,7 @@ open http://localhost:5173/pc-server
 本次实现完全按照设计文档 `docs/webrtc-signaling-mesh.md` 的要求，成功构建了一个功能完整、架构清晰、文档齐全的多人 Mesh 音视频通话系统。
 
 **核心成果：**
+
 - ✅ 信令服务器正常运行
 - ✅ 前端页面功能完整
 - ✅ 多人连接稳定可靠

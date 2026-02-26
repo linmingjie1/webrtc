@@ -164,7 +164,7 @@ const { logs, addLog, clearLogs } = useLogger()
 const localVideoRef = ref(null)
 
 // 配置
-const serverUrl = ref('ws://localhost:8787')
+const serverUrl = ref(localStorage.getItem('serverUrl') || 'ws://localhost:8787')
 const roomId = ref('demo')
 const userName = ref('')
 const isConnecting = ref(false)
@@ -302,7 +302,7 @@ const handleConnect = async () => {
 
 // 断开连接
 const handleDisconnect = () => {
-  leaveRoom()
+  leaveRoom() // 离开房间
   disconnect()
   cleanup()
   ElMessage.info('已断开连接')

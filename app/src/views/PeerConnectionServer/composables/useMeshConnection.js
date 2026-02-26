@@ -103,6 +103,17 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
     }
 
     addLog('info', `为 ${peerId} 创建 PeerConnection`)
+    /*
+        RTCPeerConnection 是 WebRTC 里负责建立点对点音视频/数据连接的核心对象。
+        主要负责：
+          - 在两个终端之间协商连接参数（SDP：编解码、网络能力等）
+          - 借助 ICE/STUN/TURN 打洞和连通性检测，尽量直连，必要时走中继
+          - 传输媒体流（摄像头/麦克风）和可选的数据通道（RTCDataChannel）
+          - 处理连接状态变化（连接中、已连接、断开、失败）
+          - 支持加密传输（DTLS/SRTP），保证通信安全
+
+      https://developer.mozilla.org/zh-CN/docs/Web/API/RTCPeerConnection/RTCPeerConnection
+    */
     const pc = new RTCPeerConnection(configuration)
 
     // 监听 ICE 候选
@@ -163,8 +174,23 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
 
       addLog('info', `向 ${peerId} 发送 Offer`)
       const offer = await pc.createOffer()
+      /*
+      设置当前连接方案（offer），并基于该方案收集可用的 ICE 候选地址。
+      offer 是 SDP 描述，包含了媒体类型、编解码器、网络传输信息等。
+
+      在你把 local description 设进去之后，浏览器才知道“这次连接该怎么建”，于是开始 ICE candidate 收集（打洞/找路径），
+      每收集到一个 candidate 就触发一次 icecandidate 事件，让你通过信令发给对端。
+      */
       await pc.setLocalDescription(offer)
 
+      /*
+      Trickle ICE 做法：
+        1. 先发 SDP offer：先把“会话规则”定下来（媒体类型、编解码、DTLS、ICE 参数等）
+        2. 再陆续发 candidate（触发 onicecandidate 事件）：候选地址边发现边通知，对端边加边尝试连通
+
+        offer/answer ：先约定“我们怎么传输（协议与能力）”。如 ICE ufrag/pwd、媒体与传输参数
+        candidate ：在这个约定下提供可尝试的连通候选（候选传输地址/候选连通端点）”。如 host/srflx/relay 等候选地址
+      */
       sendSignalToPeer(peerId, 'offer', offer)
       addLog('send', `已向 ${peerId} 发送 Offer`)
     } catch (error) {
@@ -228,6 +254,12 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
 
       // 即使本地媒体未就绪，也要建立连接以接收对方的媒体流
       const pc = createPeerConnection(from)
+      /*
+        1. 确认对端能力与参数：媒体方向、编解码、BUNDLE、DTLS、ICE ufrag/pwd 等
+        2. 让本地进入正确信令状态：从 stable 进入 have-remote-offer，这样后面才能 createAnswer()
+        3. 为后续 ICE 建立上下文：之后 addIceCandidate() 才知道这些 candidate 属于哪条 m-line/哪个会话
+        4. 触发协商相关流程：本地据此生成匹配的 Answer，并开始/继续连通性检查
+      */
       await pc.setRemoteDescription(new RTCSessionDescription(offer))
 
       // 处理缓存的 ICE 候选
@@ -235,6 +267,14 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
 
       // 创建并发送 Answer
       const answer = await pc.createAnswer()
+      /*
+        1. 信令状态收敛：从 have-remote-offer 进入 stable，这轮 O/A 协商在本端完成。
+        2. 启动/继续 ICE 流程：浏览器开始或继续收集本地 candidate，触发 onicecandidate，你这边会通过信令发给对端。
+        3. 开始连通性检查：结合已设置的远端 offer（含 ICE 参数）和后续双方 candidate，进行 ICE connectivity checks。
+        4. 媒体/传输参数生效：answer 里确认后的编解码、方向（sendrecv/recvonly 等）、DTLS 参数被应用到连接。
+        5. 等待对端确认完成闭环：你发送 answer 后，对端还要 setRemoteDescription(answer)，随后两边 ICE 检查通过才会进入 connected/completed。
+        6. 后续事件推进：常见会看到 iceConnectionState 事件从 checking -> connected，媒体到达时触发 ontrack 事件。
+       */
       await pc.setLocalDescription(answer)
 
       sendSignalToPeer(from, 'answer', answer)
@@ -272,6 +312,9 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
    * 处理收到的 ICE 候选
    */
   const handleIceCandidate = async (from, candidate) => {
+    /*
+    找到->为对端创建的 PeerConnection 实例，即调用了 setRemoteDescription 的那个 RTCPeerConnection 实例
+    */
     const pc = pcs.value.get(from)
 
     if (!pc || !pc.remoteDescription) {
@@ -285,6 +328,21 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
     }
 
     try {
+      /*
+      添加对方发来的 ICE candidate
+
+      ICE 连接需要两类信息：
+        - 本地 candidate（你自己收集的，发给对方）
+        - 远端 candidate（对方收集的，你收到后 addIceCandidate）
+
+      addIceCandidate 的作用就是：
+        - 把“对端发现的候选网络地址”喂给本地 ICE Agent，让它有更多可尝试的路径去做 connectivity checks
+
+        表示连通性进展/结果的是状态变化 (oniceconnectionstatechange 事件)：
+          iceConnectionState: 'checking'（正在测）
+          iceConnectionState: 'connected' 或 'completed'（测通了）
+          iceConnectionState: 'failed'（没测通）
+      */
       await pc.addIceCandidate(new RTCIceCandidate(candidate))
       addLog('info', `已添加来自 ${from} 的 ICE 候选`)
     } catch (error) {
@@ -324,6 +382,14 @@ export function useMeshConnection(addLog, sendSignal, getLocalStreamFn) {
 
   /**
    * 清空指定 peer 的缓存 ICE 候选
+   *
+   * 是为了解决 ICE candidate 先到、SDP 后到 的时序问题：
+   *   你先收到对端 ice-candidate，但此时本地 pc 还没 setRemoteDescription，这时直接 addIceCandidate 往往会失败（或不安全）
+   *
+   * 原因：
+   *  1. Trickle ICE 天生并行：对端一旦 setLocalDescription(offer/answer)，就会持续产出 candidate；offer 和后续 candidate 都是独立消息，异步发送。
+   *  2. 网络层乱序：即使同一条 WebSocket 连接通常保序，实际还有服务端转发、事件循环调度、客户端异步 await 处理等因素，导致你“处理”消息时顺序可能变化。
+   *  3. 本地准备慢于消息到达：你收到 offer 后要 createPeerConnection、setRemoteDescription，这段是异步，这期间 candidate 可能已经到并触发了 handleIceCandidate。
    */
   const flushPendingIce = async (peerId) => {
     const candidates = pendingIce.value.get(peerId)

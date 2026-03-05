@@ -40,7 +40,7 @@
 
 - 后端：Node（Token 签发 + 房间管理 + 业务鉴权）
 
-- 基础设施：LiveKit Server + Redis（按需） + coturn + 监控
+- 基础设施：LiveKit Server + Redis（按需） + coturn（非必需） + 监控
 
 必须功能（优先级从高到低）：
 

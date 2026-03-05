@@ -1,0 +1,6 @@
+[submodule "packages/livekit-meet"]
+	path = packages/livekit-meet
+	url = https://github.com/linmingjie1/livekit-meet.git
+[submodule "packages/mediasoup-demo"]
+	path = packages/mediasoup-demo
+	url = https://github.com/versatica/mediasoup-demo.git
